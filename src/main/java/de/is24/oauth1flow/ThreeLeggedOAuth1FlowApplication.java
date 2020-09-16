@@ -31,21 +31,20 @@ class TestController {
     public static final String ACCESS_CONFIRMATION_URL = SANDBOX_URL + "/restapi/security/oauth/confirm_access";
     private static final String RESOURCE_ENDPOINT_URL = SANDBOX_URL + "/restapi/api/offer/v1.0/user/me/realestate/";
 
-    private static final String CLIENT_KEY = "client-key";
-    private static final String CLIENT_SECRET = "client-secret";
-
     private static final String IS24_SANDBOX = "is24-sandbox";
+    public static final String AUTHORIZED = "authorized";
+    public static final String REJECTED = "rejected";
 
     @Value("http://localhost:${server.port}/callback")
     String callbackUrl;
     WebClient webClient = WebClient.builder().build();
     OAuthConsumerSupport oAuthConsumerSupport = new CoreOAuthConsumerSupport();
-    ProtectedResourceDetails is24ResourceDetails = createIs24ResourceDetails();
+    ProtectedResourceDetails is24ClientKeyDetails = createIs24ClientKeyDetails();
 
     Map<String, OAuthConsumerToken> requestTokenRepository = new HashMap<>();
     Map<String, OAuthConsumerToken> accessTokenRepository = new HashMap<>();
 
-    ProtectedResourceDetails createIs24ResourceDetails() {
+    ProtectedResourceDetails createIs24ClientKeyDetails() {
         BaseProtectedResourceDetails protectedResourceDetails = new BaseProtectedResourceDetails();
         protectedResourceDetails.setConsumerKey(CLIENT_KEY);
         protectedResourceDetails.setSharedSecret(new SharedConsumerSecretImpl(CLIENT_SECRET));
@@ -60,7 +59,7 @@ class TestController {
     @GetMapping("/initialize-token-exchange")
     public void initializeTokenExchange(HttpServletResponse response, Authentication yourLocalUserAuthentication) throws IOException {
         String userName = yourLocalUserAuthentication.getName();
-        OAuthConsumerToken requestToken = oAuthConsumerSupport.getUnauthorizedRequestToken(is24ResourceDetails, callbackUrl);
+        OAuthConsumerToken requestToken = oAuthConsumerSupport.getUnauthorizedRequestToken(is24ClientKeyDetails, callbackUrl);
         requestTokenRepository.put(userName, requestToken);
         response.sendRedirect(ACCESS_CONFIRMATION_URL + "?oauth_token=" + requestToken.getValue());
     }
@@ -72,35 +71,64 @@ class TestController {
                               Authentication yourLocalUserAuthentication,
                               HttpServletResponse response) throws IOException {
         String userName = yourLocalUserAuthentication.getName();
-        OAuthConsumerToken currentRequestToken = requestTokenRepository.get(userName);
+        OAuthConsumerToken latestRequestTokenFromRepository = requestTokenRepository.get(userName);
 
-        if (currentRequestToken == null || !currentRequestToken.getValue().equals(requestToken)) {
-            response.sendError(HttpStatus.BAD_REQUEST.value(), "Request token for current user does not match token from request!");
+        if (!isAuthorizedState(state)) {
+            handleAccessConfirmationError(state, response);
             return;
         }
-        if (!"authorized".equals(state)) {
-            // error
+        if (!latestRequestTokenExistsAndMatchesTokenFromRequest(requestToken, latestRequestTokenFromRepository)) {
+            handleInvalidRequestToken(response);
+            return;
         }
 
-        OAuthConsumerToken accessToken = oAuthConsumerSupport.getAccessToken(is24ResourceDetails, currentRequestToken, verifier);
+        OAuthConsumerToken accessToken = oAuthConsumerSupport.getAccessToken(is24ClientKeyDetails, latestRequestTokenFromRepository, verifier);
         accessTokenRepository.put(userName, accessToken);
+        redirectUserToPageOfYourChoice(response);
     }
 
     @GetMapping(value = "/load-real-estates", produces = "text/plain")
-    public String loadRealEstates(Authentication yourLocalUserAuthentication) throws IOException, URISyntaxException {
+    public String loadRealEstates(Authentication yourLocalUserAuthentication, HttpServletResponse response) throws IOException, URISyntaxException {
         String userName = yourLocalUserAuthentication.getName();
         OAuthConsumerToken accessToken = accessTokenRepository.get(userName);
+
         if (accessToken == null) {
-            // initialize token exchange
+            response.sendRedirect("/initialize-token-exchange");
+            return "Redirect";
         }
+
         URL url = new URL(RESOURCE_ENDPOINT_URL);
-        String authHeader = oAuthConsumerSupport.getAuthorizationHeader(is24ResourceDetails, accessToken, url, "GET", null);
+        String authHeader = oAuthConsumerSupport.getAuthorizationHeader(is24ClientKeyDetails, accessToken, url, "GET", null);
         return webClient.get()
                 .uri(url.toURI())
                 .header("Authorization", authHeader)
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
+    }
+
+    private boolean latestRequestTokenExistsAndMatchesTokenFromRequest(@RequestParam("oauth_token") String requestToken, OAuthConsumerToken latestRequestToken) {
+        return latestRequestToken != null && latestRequestToken.getValue().equals(requestToken);
+    }
+
+    private void handleInvalidRequestToken(HttpServletResponse response) throws IOException {
+        response.sendError(HttpStatus.BAD_REQUEST.value(), "Request token for current user does not match token from request!");
+    }
+
+    private void handleAccessConfirmationError(String state, HttpServletResponse response) throws IOException {
+        if (REJECTED.equals(state)) {
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), "The token was explicit not authorized by the user!");
+        } else {
+            response.sendError(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An error has occurred during authorization!");
+        }
+    }
+
+    private boolean isAuthorizedState(@RequestParam("state") String state) {
+        return AUTHORIZED.equals(state);
+    }
+
+    private void redirectUserToPageOfYourChoice(HttpServletResponse response) throws IOException {
+        response.sendRedirect("/load-real-estates");
     }
 }
 
