@@ -1,19 +1,15 @@
 package de.is24.oauth1flow;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth.common.signature.SharedConsumerSecretImpl;
 import org.springframework.security.oauth.consumer.BaseProtectedResourceDetails;
-import org.springframework.security.oauth.consumer.InMemoryProtectedResourceDetailsService;
 import org.springframework.security.oauth.consumer.OAuthConsumerSupport;
 import org.springframework.security.oauth.consumer.OAuthConsumerToken;
 import org.springframework.security.oauth.consumer.ProtectedResourceDetails;
-import org.springframework.security.oauth.consumer.ProtectedResourceDetailsService;
 import org.springframework.security.oauth.consumer.client.CoreOAuthConsumerSupport;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -42,28 +38,14 @@ class TestController {
 
     @Value("http://localhost:${server.port}/callback")
     String callbackUrl;
-    @Autowired
-    WebClient webClient;
-    @Autowired
-    OAuthConsumerSupport oAuthConsumerSupport;
-    @Autowired
-    ProtectedResourceDetails is24ResourceDetails;
+    WebClient webClient = WebClient.builder().build();
+    OAuthConsumerSupport oAuthConsumerSupport = new CoreOAuthConsumerSupport();
+    ProtectedResourceDetails is24ResourceDetails = createIs24ResourceDetails();
 
     Map<String, OAuthConsumerToken> requestTokenRepository = new HashMap<>();
-    Map<String, OAuthConsumerToken> accessTokenRespository = new HashMap<>();
+    Map<String, OAuthConsumerToken> accessTokenRepository = new HashMap<>();
 
-    @Bean
-    ProtectedResourceDetailsService protectedResourceDetailsService(ProtectedResourceDetails is24ResourceDetails) {
-        InMemoryProtectedResourceDetailsService inMemoryProtectedResourceDetailsService = new InMemoryProtectedResourceDetailsService();
-        HashMap<String, ProtectedResourceDetails> detailsServiceHashMap = new HashMap<>();
-        detailsServiceHashMap.put(IS24_SANDBOX, is24ResourceDetails);
-        inMemoryProtectedResourceDetailsService.setResourceDetailsStore(detailsServiceHashMap);
-
-        return inMemoryProtectedResourceDetailsService;
-    }
-
-    @Bean
-    ProtectedResourceDetails is24ResourceDetails() {
+    ProtectedResourceDetails createIs24ResourceDetails() {
         BaseProtectedResourceDetails protectedResourceDetails = new BaseProtectedResourceDetails();
         protectedResourceDetails.setConsumerKey(CLIENT_KEY);
         protectedResourceDetails.setSharedSecret(new SharedConsumerSecretImpl(CLIENT_SECRET));
@@ -75,50 +57,42 @@ class TestController {
         return protectedResourceDetails;
     }
 
-    @Bean
-    public OAuthConsumerSupport oAuthConsumerSupport() {
-        return new CoreOAuthConsumerSupport();
-    }
-
-    @Bean
-    public WebClient webClient() {
-        return WebClient.builder().build();
-    }
-
     @GetMapping("/initialize-token-exchange")
-    public void initializeTokenExchange(HttpServletResponse response, Authentication authentication) throws IOException {
-        String userName = authentication.getName();
+    public void initializeTokenExchange(HttpServletResponse response, Authentication yourLocalUserAuthentication) throws IOException {
+        String userName = yourLocalUserAuthentication.getName();
         OAuthConsumerToken requestToken = oAuthConsumerSupport.getUnauthorizedRequestToken(is24ResourceDetails, callbackUrl);
         requestTokenRepository.put(userName, requestToken);
         response.sendRedirect(ACCESS_CONFIRMATION_URL + "?oauth_token=" + requestToken.getValue());
     }
 
     @GetMapping("/callback")
-    public void callbackStuff(@RequestParam("state") String state,
+    public void oauthCallback(@RequestParam("state") String state,
                               @RequestParam("oauth_token") String requestToken,
                               @RequestParam("oauth_verifier") String verifier,
-                              Authentication authentication,
+                              Authentication yourLocalUserAuthentication,
                               HttpServletResponse response) throws IOException {
-        // happy path
-        String userName = authentication.getName();
+        String userName = yourLocalUserAuthentication.getName();
         OAuthConsumerToken currentRequestToken = requestTokenRepository.get(userName);
 
         if (currentRequestToken == null || !currentRequestToken.getValue().equals(requestToken)) {
-            response.sendRedirect("/error");
             response.sendError(HttpStatus.BAD_REQUEST.value(), "Request token for current user does not match token from request!");
             return;
         }
+        if (!"authorized".equals(state)) {
+            // error
+        }
 
         OAuthConsumerToken accessToken = oAuthConsumerSupport.getAccessToken(is24ResourceDetails, currentRequestToken, verifier);
-        accessTokenRespository.put(userName, accessToken);
-
-        response.sendRedirect("/make-request");
+        accessTokenRepository.put(userName, accessToken);
     }
 
-    @GetMapping(value = "/make-request", produces = "text/plain")
-    public String makeRequest(Authentication authentication) throws IOException, URISyntaxException {
-        String userName = authentication.getName();
-        OAuthConsumerToken accessToken = accessTokenRespository.get(userName);
+    @GetMapping(value = "/load-real-estates", produces = "text/plain")
+    public String loadRealEstates(Authentication yourLocalUserAuthentication) throws IOException, URISyntaxException {
+        String userName = yourLocalUserAuthentication.getName();
+        OAuthConsumerToken accessToken = accessTokenRepository.get(userName);
+        if (accessToken == null) {
+            // initialize token exchange
+        }
         URL url = new URL(RESOURCE_ENDPOINT_URL);
         String authHeader = oAuthConsumerSupport.getAuthorizationHeader(is24ResourceDetails, accessToken, url, "GET", null);
         return webClient.get()
