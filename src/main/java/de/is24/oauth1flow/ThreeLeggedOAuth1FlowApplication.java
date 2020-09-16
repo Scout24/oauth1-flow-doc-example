@@ -31,6 +31,9 @@ class TestController {
     public static final String ACCESS_CONFIRMATION_URL = SANDBOX_URL + "/restapi/security/oauth/confirm_access";
     private static final String RESOURCE_ENDPOINT_URL = SANDBOX_URL + "/restapi/api/offer/v1.0/user/me/realestate/";
 
+    private static final String CLIENT_KEY = "your-client-key";
+    private static final String CLIENT_SECRET = "your-client-secret";
+
     private static final String IS24_SANDBOX = "is24-sandbox";
     public static final String AUTHORIZED = "authorized";
     public static final String REJECTED = "rejected";
