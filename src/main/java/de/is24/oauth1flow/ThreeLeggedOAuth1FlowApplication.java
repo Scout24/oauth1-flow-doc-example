@@ -105,9 +105,9 @@ class TestController {
 }
 
 @SpringBootApplication
-public class Oauth1FlowApplication {
+public class ThreeLeggedOAuth1FlowApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(Oauth1FlowApplication.class, args);
+        SpringApplication.run(ThreeLeggedOAuth1FlowApplication.class, args);
     }
 }
