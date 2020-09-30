@@ -1,4 +1,4 @@
-package de.is24.oauth1flow;
+package de.is24;
 
 import oauth.signpost.OAuthConsumer;
 import oauth.signpost.basic.DefaultOAuthConsumer;

@@ -1,4 +1,4 @@
-package de.is24.oauth1flow;
+package de.is24;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
