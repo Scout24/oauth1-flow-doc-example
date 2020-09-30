@@ -17,16 +17,14 @@ This documentation describes how to run the code example to make a 2-legged-oaut
 - The response will be in XML format.
 - The information depend on the Api endpoint which you are sending your request to. 
 
-**Note:** If you don't change the consumer key and secret in lines 17-18, the response will look like following:
-401
+**Note:** If you don't change the consumer key and secret in lines 17-18, the response will look like following:</br>
+401 </br>
 _**XML schema:**_
-<div id="code">
-```
+<code>
 <common:messages xmlns:common="http://rest.immobilienscout24.de/schema/common/1.0">
     <message>
         <messageCode>ERROR_AUTHENTICATION_REQUIRED</messageCode>
         <message>Consumer not found: yourConsumerKey</message>
     </message>
 </common:messages>
-```
-</div>
+</code>
