@@ -10,7 +10,7 @@ We use Spring Security to secure the application with a login dialog and to sign
 4. Open a browser and navigate to: http://localhost:8080/load-real-estates
 5. Log in with the credentials:
     * username: user
-    * password: *<Spring security generated password>*
+    * password: *\<spring security password\>*
 6. The application will initiate the three-legged OAuth1.0a flow in which you will be redirected to ImmoScout24,
     where you need to confirm that the application can communicate with the ImmoScout24 API.
     ImmoScout24 redirects you back to the application where you will then see real-estate data that has been requested from the ImmoScout24 API.
