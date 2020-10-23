@@ -20,12 +20,6 @@
 
   <dependencies>
     <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>oauth.signpost</groupId>
       <artifactId>signpost-core</artifactId>
       <version>1.2.1.2</version>

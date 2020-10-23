@@ -2,7 +2,7 @@
 This is a spring boot application, which executes the three-legged OAuth1.0a flow and communicates with the ImmoScout24 API.
 We use Spring Security to secure the application with a login dialog and to sign requests to the ImmoScout24 API.
 
-### Running the application
+### Running the example application
 1. First you need to set your own CLIENT_KEY and CLIENT_SECRET in the code.
 2. Run the application with maven using `mvn spring-boot:run`.
 3. Once the application is running, Spring will print a password to stdin which you can use to login to the application.
