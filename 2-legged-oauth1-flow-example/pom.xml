@@ -9,8 +9,7 @@
   <version>0.0.1-SNAPSHOT</version>
 
   <name>2-legged-oauth1-flow-example</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <url>https://api.immobilienscout24.de</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
